@@ -1,0 +1,46 @@
+cmake_minimum_required(VERSION 3.10)
+
+# Set the project name
+project(SeekBug)
+
+# Specify the C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+
+# Find required packages
+find_package(PkgConfig REQUIRED)
+
+find_package(LLVM REQUIRED CONFIG)
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+include(AddLLVM)
+
+separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
+add_definitions(${LLVM_DEFINITIONS_LIST})
+
+# Check for LLDB
+link_directories(${LLVM_BUILD_ROOT}/)
+find_library(LLDB_LIBRARY REQUIRED
+    NAMES lldb
+    HINTS "${LLVM_BUILD_ROOT}/lib"
+    PATHS "${LLVM_BUILD_ROOT}/lib"
+)
+
+message("Using LLDB library from ${LLDB_LIBRARY}")
+
+include_directories(${LLVM_INCLUDE_DIRS} ${LLVM_PROJECT_SOURCE}/lldb/include/)
+include_directories(${LLVM_PROJECT_SOURCE}/llvm/include)
+
+llvm_map_components_to_libnames(llvm_libs
+  Support
+)
+add_executable(seek-bug main.cpp)
+
+# Link required libraries
+target_link_libraries(seek-bug ${llvm_libs} ${LLDB_LIBRARY})
+
+set_target_properties(seek-bug
+    PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+)
