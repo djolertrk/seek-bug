@@ -9,6 +9,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "seek-bug/AICommands.h"
+
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/WithColor.h"
 #include "llvm/Support/raw_ostream.h"
@@ -67,8 +69,12 @@ int main(int argc, char **argv) {
   // Register custom commands
   lldb::SBCommandInterpreter interpreter = debugger.GetCommandInterpreter();
   // TODO: register comamnd(s) dealing with LLM.
+  seekbug::RegisterAICommands(interpreter);
 
   debugger.RunCommandInterpreter(true, false);
+
+  lldb::SBDebugger::Destroy(debugger);
+  lldb::SBDebugger::Terminate();
 
   WithColor(llvm::outs(), HighlightColor::String)
       << "=== Happy Debugging! Bye!\n";

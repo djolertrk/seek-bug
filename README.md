@@ -106,5 +106,5 @@ Process 13852 stopped
 Process 13852 resuming
 Process 13852 exited with status = 1 (0x00000001)
 (seek-bug) q
-=== Done, bye!
+=== Happy Debugging! Bye!
 ```

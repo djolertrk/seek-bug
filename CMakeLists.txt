@@ -33,10 +33,18 @@ include_directories(${LLVM_PROJECT_SOURCE}/llvm/include)
 llvm_map_components_to_libnames(llvm_libs
   Support
 )
+
+add_subdirectory(lib)
+
 add_executable(seek-bug main.cpp)
 
 # Link required libraries
-target_link_libraries(seek-bug ${llvm_libs} ${LLDB_LIBRARY})
+target_link_libraries(seek-bug ${llvm_libs} ${LLDB_LIBRARY} AICommands)
+
+target_include_directories(seek-bug
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/include
+)
 
 set_target_properties(seek-bug
     PROPERTIES
