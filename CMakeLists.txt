@@ -27,6 +27,13 @@ find_library(LLDB_LIBRARY REQUIRED
 
 message("Using LLDB library from ${LLDB_LIBRARY}")
 
+# Find llama.cpp.
+if (NOT LLAMA_CPP_DIR)
+  message(FATAL_ERROR "LLAMA_CPP_DIR must be specified in order to find llama.cpp")
+endif()
+
+include_directories(${LLAMA_CPP_DIR}/include)
+
 include_directories(${LLVM_INCLUDE_DIRS} ${LLVM_PROJECT_SOURCE}/lldb/include/)
 include_directories(${LLVM_PROJECT_SOURCE}/llvm/include)
 
@@ -39,7 +46,7 @@ add_subdirectory(lib)
 add_executable(seek-bug main.cpp)
 
 # Link required libraries
-target_link_libraries(seek-bug ${llvm_libs} ${LLDB_LIBRARY} AICommands)
+target_link_libraries(seek-bug ${llvm_libs} ${LLDB_LIBRARY} AICommands ${LLAMA_CPP_DIR}/lib/libllama.dylib)
 
 target_include_directories(seek-bug
     PUBLIC

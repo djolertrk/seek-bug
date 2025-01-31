@@ -33,12 +33,13 @@ $ ninja install
 
 ### Deep seek
 
-TODO
+Download: https://huggingface.co/lmstudio-community/DeepSeek-R1-Distill-Llama-8B-GGUF/tree/main
+`DeepSeek-R1-Distill-Llama-8B-Q8_0.gguf`
 
 ### Build seek-bug
 
 ```
-$ cmake ../seek-bug/ -DLLVM_DIR=/opt/homebrew/opt/llvm@19/lib/cmake/llvm -DClang_DIR=/opt/homebrew/opt/llvm@19/lib/cmake/lldb -DLLVM_EXTERNAL_LIT=/opt/homebrew/bin//lit  -DCMAKE_CXX_FLAGS="-Wno-deprecated-declarations" -Dllama_DIR=/Users/djtodorovic/projects/SeekBug/llama.cpp/install/lib/cmake/llama -DLLVM_BUILD_ROOT=/Users/djtodorovic/projects/SeekBug/build_lldb/ -G Ninja
+$ cmake ../seek-bug/ -DLLVM_DIR=/opt/homebrew/opt/llvm@19/lib/cmake/llvm -DClang_DIR=/opt/homebrew/opt/llvm@19/lib/cmake/lldb -DLLVM_EXTERNAL_LIT=/opt/homebrew/bin//lit  -DCMAKE_CXX_FLAGS="-Wno-deprecated-declarations" -Dllama_DIR=/Users/djtodorovic/projects/SeekBug/llama.cpp/install/lib/cmake/llama -DLLAMA_CPP_DIR=/Users/djtodorovic/projects/SeekBug/llama.cpp/install/ -DLLVM_BUILD_ROOT=/Users/djtodorovic/projects/SeekBug/build_lldb/ -G Ninja
 $ ninja seek-bug
 ```
 
