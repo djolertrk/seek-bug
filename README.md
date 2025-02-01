@@ -1,9 +1,18 @@
 # seek-bug
-An LLDB based debugger that uses DeepSeek
+
+Let's have a chat with your debugger!
+
+`seek-bug` is an `LLDB` based debugger that uses `DeepSeek`.
 
 ## Build from source
 
+Here are steps to build the tool for MacOS.
+NOTE: Instructions for Linux are comming soon.
+
 ### LLVM
+
+Download LLVM packages:
+
 ```
 brew install llvm@19
 brew install lit
@@ -21,29 +30,27 @@ $ ninja
 
 ### llama.cpp
 
+Build `llama.cpp`:
+
 ```
 $ git clone https://github.com/ggerganov/llama.cpp.git
-$ cd llama.cpp
-$ mkdir build
-$ cd build
+$ cd llama.cpp && mkdir build && cd build
 $ cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PWD/../install -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=OFF ..
-$ ninja
-$ ninja install
+$ ninja && ninja install
 ```
 
 ### Deep seek
 
-Download: https://huggingface.co/lmstudio-community/DeepSeek-R1-Distill-Llama-8B-GGUF/tree/main
-`DeepSeek-R1-Distill-Llama-8B-Q8_0.gguf`
+Download: https://huggingface.co/lmstudio-community/DeepSeek-R1-Distill-Llama-8B-GGUF/tree/main, the `DeepSeek-R1-Distill-Llama-8B-Q8_0.gguf` model.
 
 ### Build seek-bug
 
 ```
-$ cmake ../seek-bug/ -DLLVM_DIR=/opt/homebrew/opt/llvm@19/lib/cmake/llvm -DClang_DIR=/opt/homebrew/opt/llvm@19/lib/cmake/lldb -DLLVM_EXTERNAL_LIT=/opt/homebrew/bin//lit  -DCMAKE_CXX_FLAGS="-Wno-deprecated-declarations" -Dllama_DIR=/Users/djtodorovic/projects/SeekBug/llama.cpp/install/lib/cmake/llama -DLLAMA_CPP_DIR=/Users/djtodorovic/projects/SeekBug/llama.cpp/install/ -DLLVM_BUILD_ROOT=/Users/djtodorovic/projects/SeekBug/build_lldb/ -G Ninja
+$ cmake ../seek-bug/ -DLLVM_DIR=/opt/homebrew/opt/llvm@19/lib/cmake/llvm -DClang_DIR=/opt/homebrew/opt/llvm@19/lib/cmake/lldb -DLLVM_EXTERNAL_LIT=/opt/homebrew/bin//lit  -DCMAKE_CXX_FLAGS="-Wno-deprecated-declarations" -Dllama_DIR=/path/to/llama.cpp/install/lib/cmake/llama -DLLAMA_CPP_DIR=/path/to/llama.cpp/install/ -DLLVM_BUILD_ROOT=/path/to/build_lldb/ -G Ninja
 $ ninja seek-bug
 ```
 
-## Run
+## Run the tool
 
 Compile mini example:
 
@@ -65,12 +72,12 @@ $ clang -O0 test.c
 Run the tool:
 
 ```
-$ bin/seek-bug ./a.out
+$ bin/seek-bug --deep-seek-llm-path=/path/to/DeepSeek-R1-Distill-Llama-8B-Q8_0.gguf ./a.out
 === SeekBug - Modern, Portable and Deep Debugger
 (seek-bug) b main
 Breakpoint 1: where = a.out`main + 8 at test.c:5:7, address = 0x0000000100003f50
 (seek-bug) r
-Process 13852 launched: '/Users/djtodorovic/projects/SeekBug/examples/a.out' (arm64)
+Process 13852 launched: '/path/to/a.out' (arm64)
 Process 13852 stopped
 * thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1
     frame #0: 0x0000000100003f50 a.out`main at test.c:5:7

@@ -228,11 +228,10 @@ bool AISuggestCommand::DoExecute(lldb::SBDebugger debugger, char **command,
 
   // Hardcode or configure the model path somewhere:
   // You could read from environment variable or a config file:
-  std::string modelPath = "/Users/djtodorovic/projects/SeekBug/"
-                          "DeepSeek-R1-Distill-Llama-8B-Q8_0.gguf";
+  // std::string modelPath = "/Users/djtodorovic/projects/SeekBug/"
+  //                         "DeepSeek-R1-Distill-Llama-8B-Q8_0.gguf";
   std::string prompt = createRichPrompt(debugger, userInput);
-
-  std::string response = runLLM(prompt, modelPath);
+  std::string response = runLLM(prompt, context.DeepSeekLLMPath);
 
   result.SetStatus(lldb::eReturnStatusSuccessFinishResult);
   // result.Printf("[AI Suggestion] You asked: %s\n", userInput.c_str());
@@ -242,8 +241,9 @@ bool AISuggestCommand::DoExecute(lldb::SBDebugger debugger, char **command,
   return true;
 }
 
-bool RegisterAICommands(lldb::SBCommandInterpreter &interpreter) {
-  // Add the main 'ai' multiword command, which groups sub-commands
+bool RegisterAICommands(lldb::SBCommandInterpreter &interpreter,
+                        SeekBugContext &context) {
+  // Add the main 'ai' multiword command, which groups sub-commands.
   lldb::SBCommand aiCmd =
       interpreter.AddMultiwordCommand("ai", "AI-based commands");
   if (!aiCmd.IsValid()) {
@@ -251,8 +251,8 @@ bool RegisterAICommands(lldb::SBCommandInterpreter &interpreter) {
     return false;
   }
 
-  // Now add the sub-command "suggest" to the "ai" group
-  static AISuggestCommand *suggestCmdImpl = new AISuggestCommand();
+  // Add the sub-command "suggest" to the "ai" group.
+  static AISuggestCommand *suggestCmdImpl = new AISuggestCommand(context);
   lldb::SBCommand suggestCmd = aiCmd.AddCommand(
       "suggest", suggestCmdImpl,
       "Ask the AI for suggestions. Usage: ai suggest <question>");
