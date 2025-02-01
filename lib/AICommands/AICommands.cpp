@@ -200,7 +200,8 @@ std::string createRichPrompt(lldb::SBDebugger &debugger,
                << "User Question: " << userQuery << "\n"
                << "Answer carefully and concisely. Focus on control flow. You "
                   "can do it! And the answer should not be too large, use a "
-                  "few sentences. Do not print </think> and things after it.\n";
+                  "few sentences. Do not print </think> and things after it. "
+                  "Use up to 5 sentences.\n";
 
   return promptStream.str();
 }
