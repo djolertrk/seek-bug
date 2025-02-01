@@ -1,8 +1,12 @@
 # seek-bug
 
+<div align=center>
+  <img src="https://github.com/user-attachments/assets/0a274a7b-4066-452d-bed9-0a87db2b8423">
+</div>
+
 Let's have a chat with your debugger!
 
-`seek-bug` is an `LLDB` based debugger that uses `DeepSeek`.
+`seek-bug` - an `LLDB` based debugger that uses `DeepSeek`.
 
 ## Build from source
 
