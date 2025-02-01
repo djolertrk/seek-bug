@@ -1,0 +1,8 @@
+# RUN: %seek-bug --help > %t.log
+# RUN: %FileCheck --input-file=%t.log %s
+
+# CHECK: === SeekBug - Modern, Portable and Deep Debugger
+# CHECK: OVERVIEW: Have a chat with your debugger!
+# CHECK: USAGE: seek-bug [options] <input file>
+# CHECK: Specific Options:
+# CHECK:   --deep-seek-llm-path=<string> - Path to DeepSeek LLM.

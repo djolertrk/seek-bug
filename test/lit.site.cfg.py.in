@@ -1,0 +1,10 @@
+@LIT_SITE_CFG_IN_HEADER@
+
+config.seekbug_obj_root= "@CMAKE_BINARY_DIR@/"
+config.seekbug_bin_path= "@CMAKE_BINARY_DIR@/bin/seek-bug"
+
+import lit.llvm
+lit.llvm.initialize(lit_config, config)
+
+# Let the main config do the real work.
+lit_config.load_config(config, "@SEEKBUG_SOURCE_DIR@/test/lit.cfg.py")

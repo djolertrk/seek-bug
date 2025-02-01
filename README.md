@@ -116,3 +116,11 @@ Process 13852 exited with status = 1 (0x00000001)
 (seek-bug) q
 === Happy Debugging! Bye!
 ```
+
+## Run tests
+
+Just run:
+
+```
+$ ninja check-seek-bug
+```
