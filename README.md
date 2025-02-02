@@ -51,8 +51,9 @@ Download: https://huggingface.co/lmstudio-community/DeepSeek-R1-Distill-Llama-8B
 ### Build seek-bug
 
 ```
-$ cmake ../seek-bug/ -DLLVM_DIR=/opt/homebrew/opt/llvm@19/lib/cmake/llvm -DClang_DIR=/opt/homebrew/opt/llvm@19/lib/cmake/lldb -DLLVM_EXTERNAL_LIT=/opt/homebrew/bin//lit  -DCMAKE_CXX_FLAGS="-Wno-deprecated-declarations" -Dllama_DIR=/path/to/llama.cpp/install/lib/cmake/llama -DLLAMA_CPP_DIR=/path/to/llama.cpp/install/ -DLLVM_BUILD_ROOT=/path/to/build_lldb/ -G Ninja
+$ cmake ../seek-bug/ -DLLVM_DIR=/opt/homebrew/opt/llvm@19/lib/cmake/llvm -DLLVM_EXTERNAL_LIT=/opt/homebrew/bin//lit  -DCMAKE_CXX_FLAGS="-Wno-deprecated-declarations" -DLLAMA_CPP_DIR=/path/to/llama.cpp/install/ -DLLVM_BUILD_ROOT=/path/to/build_lldb/ -G Ninja
 $ ninja seek-bug
+$ ninja SeekBugPlugin
 ```
 
 ## Run the as standalone tool

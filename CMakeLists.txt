@@ -18,9 +18,10 @@ separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 add_definitions(${LLVM_DEFINITIONS_LIST})
 
 # Check for LLDB
+message("LLVM_BUILD_ROOT ${LLVM_BUILD_ROOT}")
 link_directories(${LLVM_BUILD_ROOT}/)
 find_library(LLDB_LIBRARY REQUIRED
-    NAMES lldb
+    NAMES lldb LLDB
     HINTS "${LLVM_BUILD_ROOT}/lib"
     PATHS "${LLVM_BUILD_ROOT}/lib"
 )
