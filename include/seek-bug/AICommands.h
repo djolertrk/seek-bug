@@ -16,7 +16,7 @@ namespace seekbug {
 /// A simple command that uses an "AI" to suggest something to the user.
 /// TODO: Replace with real logic for your LLM.
 class AISuggestCommand : public lldb::SBCommandPluginInterface {
-  SeekBugContext &context;
+  SeekBugContext context;
 
 public:
   AISuggestCommand(SeekBugContext &context) : context(context) {}

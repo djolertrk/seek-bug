@@ -7,6 +7,7 @@
 Let's have a chat with your debugger!
 
 `seek-bug` - an `LLDB` based debugger that uses `DeepSeek`.
+You can use it as a standalone tool, or as an LLDB plugin. The `DeepSeek` LLM is running on your machine.
 
 ## Build from source
 
@@ -54,7 +55,7 @@ $ cmake ../seek-bug/ -DLLVM_DIR=/opt/homebrew/opt/llvm@19/lib/cmake/llvm -DClang
 $ ninja seek-bug
 ```
 
-## Run the tool
+## Run the as standalone tool
 
 Compile mini example:
 
@@ -119,6 +120,60 @@ Process 13852 resuming
 Process 13852 exited with status = 1 (0x00000001)
 (seek-bug) q
 === Happy Debugging! Bye!
+```
+
+## Build and run as LLDB Plugin
+
+Build:
+
+```
+$ ninja SeekBugPlugin
+```
+
+Run:
+
+```
+$ export DEEP_SEEK_LLM_PATH=/path/to/your/DeepSeek-R1-Distill-Llama-8B-Q8_0.gguf
+$ /opt/homebrew/opt/llvm@19/bin/lldb test2.out
+(lldb) target create "test2.out"
+Current executable set to 'test2.out' (arm64).
+(lldb) plugin load libSeekBugPlugin.dylib
+SeekBug is using DeepSeek-R1-Distill-Llama-8B-Q8_0.gguf
+SeekBug plugin loaded successfully.
+(seek-bug) b main
+Breakpoint 1: where = test2.out`main + 8 at test2.c:5:7, address = 0x0000000100003f50
+(seek-bug) r
+Process 34281 launched: 'test2.out' (arm64)
+Process 34281 stopped
+* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1
+    frame #0: 0x0000000100003f50 test2.out`main at test2.c:5:7
+   2   	
+   3   	int main()
+   4   	{
+-> 5   	  int x = 4;
+   6   	  int y = x;
+   7   	  if (x * y  > x / 2)
+   8   	    return 1;
+...
+(seek-bug) n
+Process 34281 stopped
+* thread #1, queue = 'com.apple.main-thread', stop reason = step over
+    frame #0: 0x0000000100003f88 test2.out`main at test2.c:8:5
+   5   	  int x = 4;
+   6   	  int y = x;
+   7   	  if (x * y  > x / 2)
+-> 8   	    return 1;
+   9   	  return 0;
+   10  	}
+   11  	
+(seek-bug) ai suggest "How do I come to this line?"
+DeepSeek is thinking...
+---
+
+The user is asking how to reach a specific line of code. To figure this out, I need to understand the control flow leading to that line. I'll start by examining the code structure, looking at functions and where they're called. Maybe the line is inside a loop or an if statement. I'll check the parent functions and see how the execution reaches that point. If there's a conditional, I'll determine if the condition is met. I'll also look for any variables that affect the control flow, like boolean values or counters. Once I have this information, I can explain the path taken to execute the target line.
+</think>
+
+To reach the specific line, examine the control flow by checking the code structure. Look for functions and where they're called. Determine if the line is inside a loop or an `if` statement. Investigate the parent functions to see how execution reaches that point. If there's a conditional, check if the condition is met. Also, consider variables affecting the control flow, like boolean values or counters. Once you understand the path, you can explain how the line is executed.
 ```
 
 ## Run tests
