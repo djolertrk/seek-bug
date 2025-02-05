@@ -177,6 +177,8 @@ The user is asking how to reach a specific line of code. To figure this out, I n
 To reach the specific line, examine the control flow by checking the code structure. Look for functions and where they're called. Determine if the line is inside a loop or an `if` statement. Investigate the parent functions to see how execution reaches that point. If there's a conditional, check if the condition is met. Also, consider variables affecting the control flow, like boolean values or counters. Once you understand the path, you can explain how the line is executed.
 ```
 
+NOTE: This has a bug. The `SBTarget` and `SBThreads` are invalid when LLDB plugin is initialize. I do not know why at the moment.
+
 ## Run tests
 
 Just run:
