@@ -6,14 +6,26 @@ add_library(AICommands STATIC
 target_include_directories(AICommands
     PUBLIC
         ${CMAKE_SOURCE_DIR}/include
+        /usr/lib/llvm-19/include/
 )
 
-target_link_libraries(AICommands
-    PRIVATE
-        ${LLDB_LIBRARY}
-        ${LLAMA_CPP_DIR}/lib/libllama.dylib
-        ${llvm_libs}
-)
+# TODO: Fix this.
+if(APPLE)
+  target_link_libraries(AICommands
+      PRIVATE
+          ${LLDB_LIBRARY}
+          ${LLAMA_CPP_DIR}/lib/libllama.dylib
+          ${llvm_libs}
+  )
+else()
+  # On Linux or other Unix-like systems
+  target_link_libraries(AICommands
+      PRIVATE
+          ${LLDB_LIBRARY}
+          ${LLAMA_CPP_DIR}/lib/libllama.so
+          ${llvm_libs}
+  )
+endif()
 
 # This target builds as a shared library (LLDB plugin) and links
 # against the static library AICommands.

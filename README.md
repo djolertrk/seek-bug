@@ -11,21 +11,30 @@ You can use it as a standalone tool, or as an LLDB plugin. The `DeepSeek` LLM is
 
 ## Build from source
 
-Here are steps to build the tool for MacOS.
-NOTE: Instructions for Linux are comming soon.
+Here are steps to build the tool for MacOS and Linux.
 
 ### LLVM
 
-Download LLVM packages:
+Download LLVM packages on MacOS:
 
 ```
-brew install llvm@19
-brew install lit
+$ brew install llvm@19
+$ brew install lit
 ```
 
-### LLDB
+Download LLVM packages on Linux:
 
-Download LLVM source from https://github.com/llvm/llvm-project/releases/tag/llvmorg-19.1.7.
+```
+$ echo "deb http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs)-19 main" | sudo tee /etc/apt/sources.list.d/llvm.list
+$ wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+$ sudo apt-get update
+$ sudo apt-get install -y llvm-19-dev clang-19 libclang-19-dev lld-19 pkg-config libgc-dev libssl-dev zlib1g-dev libunwind-dev liblldb-19-dev
+```
+
+### LLDB (this is needed for MacOS only)
+
+On MacOS, we need to download LLVM source from https://github.com/llvm/llvm-project/releases/tag/llvmorg-19.1.7. On Linux, you can skip it, since `lldb-dev` package is there.
+
 ```
 $ git clone https://github.com/llvm/llvm-project.git -b release/20.x --single-branch
 $ mkdir build_lldb && cd build_lldb
@@ -48,10 +57,29 @@ $ ninja && ninja install
 
 Download: https://huggingface.co/lmstudio-community/DeepSeek-R1-Distill-Llama-8B-GGUF/tree/main, the `DeepSeek-R1-Distill-Llama-8B-Q8_0.gguf` model.
 
+```
+$ wget https://huggingface.co/lmstudio-community/DeepSeek-R1-Distill-Llama-8B-GGUF/resolve/main/DeepSeek-R1-Distill-Llama-8B-Q8_0.gguf
+```
+
 ### Build seek-bug
 
+NOTE: On Linux, you can avoid `-DLLVM_BUILD_ROOT`, since we are using it from installed packages.
+
+Configure on MacOS:
+
 ```
-$ cmake ../seek-bug/ -DLLVM_DIR=/opt/homebrew/opt/llvm@19/lib/cmake/llvm -DLLVM_EXTERNAL_LIT=/opt/homebrew/bin//lit  -DCMAKE_CXX_FLAGS="-Wno-deprecated-declarations" -DLLAMA_CPP_DIR=/path/to/llama.cpp/install/ -DLLVM_BUILD_ROOT=/path/to/build_lldb/ -G Ninja
+$ cmake ../seek-bug/ -DLLVM_DIR=/path/to/llvm/lib/cmake/llvm -DLLVM_EXTERNAL_LIT=/path/to/lit  -DCMAKE_CXX_FLAGS="-Wno-deprecated-declarations" -DLLAMA_CPP_DIR=/path/to/llama.cpp/install/ -DLLVM_BUILD_ROOT=/path/to/build_lldb/ -G Ninja
+```
+
+Configure on Linux:
+
+```
+$ cmake ../seek-bug/ -DCMAKE_CXX_FLAGS="-Wno-deprecated-declarations" -DLLVM_DIR=/usr/lib/llvm-19/lib/cmake/llvm -DLLVM_EXTERNAL_LIT=/path/to/lit -DLLAMA_CPP_DIR=/path/to/llama.cpp/install/ -DCMAKE_CXX_FLAGS="-fPIC" -G Ninja
+```
+
+Build:
+
+```
 $ ninja seek-bug
 $ ninja SeekBugPlugin
 ```
@@ -75,7 +103,7 @@ int main()
 $ clang -O0 test.c
 ```
 
-Run the tool:
+Run the tool (on Linux, put `/path/to/llama.cpp/install/lib` to `LD_LIBRARY_PATH`, it is a hack for it):
 
 ```
 $ bin/seek-bug --deep-seek-llm-path=/path/to/DeepSeek-R1-Distill-Llama-8B-Q8_0.gguf ./a.out
@@ -121,6 +149,13 @@ Process 13852 resuming
 Process 13852 exited with status = 1 (0x00000001)
 (seek-bug) q
 === Happy Debugging! Bye!
+```
+
+NOTE: In Linux enviroment, until I fix it, we needed to setup:
+
+```
+$ export LLDB_DEBUGSERVER_PATH=/usr/lib/llvm-19/bin/lldb-server-19.1.7
+$ export LD_LIBRARY_PATH=/path/to/llama.cpp/install/lib
 ```
 
 ## Build and run as LLDB Plugin
