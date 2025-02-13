@@ -44,13 +44,13 @@ $ ninja
 
 ### llama.cpp
 
-Build `llama.cpp`:
+Build && install `llama.cpp`:
 
 ```
 $ git clone https://github.com/ggerganov/llama.cpp.git
 $ cd llama.cpp && mkdir build && cd build
-$ cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PWD/../install -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=OFF ..
-$ ninja && ninja install
+$ cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=OFF ..
+$ ninja && sudo ninja install
 ```
 
 ### Deep seek
@@ -64,17 +64,27 @@ $ wget https://huggingface.co/lmstudio-community/DeepSeek-R1-Distill-Llama-8B-GG
 ### Build seek-bug
 
 NOTE: On Linux, you can avoid `-DLLVM_BUILD_ROOT`, since we are using it from installed packages.
+NOTE: Make sure you copy `llama.cpp` library into `/lib`.
+```
+$ sudo cp /usr/local/lib/libllama.so /lib
+```
+
+or on MacOS:
+
+```
+$ sudo cp /usr/local/lib/libllama.dylib /lib
+```
 
 Configure on MacOS:
 
 ```
-$ cmake ../seek-bug/ -DLLVM_DIR=/path/to/llvm/lib/cmake/llvm -DLLVM_EXTERNAL_LIT=/path/to/lit  -DCMAKE_CXX_FLAGS="-Wno-deprecated-declarations" -DLLAMA_CPP_DIR=/path/to/llama.cpp/install/ -DLLVM_BUILD_ROOT=/path/to/build_lldb/ -G Ninja
+$ cmake ../seek-bug/ -DLLVM_DIR=/path/to/llvm/lib/cmake/llvm -DLLVM_EXTERNAL_LIT=/path/to/lit  -DCMAKE_CXX_FLAGS="-Wno-deprecated-declarations" -DLLVM_BUILD_ROOT=/path/to/build_lldb/ -G Ninja
 ```
 
 Configure on Linux:
 
 ```
-$ cmake ../seek-bug/ -DCMAKE_CXX_FLAGS="-Wno-deprecated-declarations" -DLLVM_DIR=/usr/lib/llvm-19/lib/cmake/llvm -DLLVM_EXTERNAL_LIT=/path/to/lit -DLLAMA_CPP_DIR=/path/to/llama.cpp/install/ -DCMAKE_CXX_FLAGS="-fPIC" -G Ninja
+$ cmake ../seek-bug/ -DCMAKE_CXX_FLAGS="-Wno-deprecated-declarations" -DLLVM_DIR=/usr/lib/llvm-19/lib/cmake/llvm -DLLVM_EXTERNAL_LIT=/path/to/lit -DCMAKE_CXX_FLAGS="-fPIC" -G Ninja
 ```
 
 Build:
@@ -85,6 +95,18 @@ $ ninja SeekBugPlugin
 ```
 
 ## Run the as standalone tool
+
+Make sure you have this in `LD_LIBRARY_PATH`, so it is able to find `llama.cpp` libraries:
+
+```
+export LD_LIBRARY_PATH=/usr/local/lib/:$PATH
+```
+
+NOTE: In Linux enviroment, until I fix it, we needed to setup:
+
+```
+$ export LLDB_DEBUGSERVER_PATH=/usr/lib/llvm-19/bin/lldb-server-19.1.7
+```
 
 Compile mini example:
 
@@ -103,7 +125,7 @@ int main()
 $ clang -O0 test.c
 ```
 
-Run the tool (on Linux, put `/path/to/llama.cpp/install/lib` to `LD_LIBRARY_PATH`, it is a hack for it):
+Run it:
 
 ```
 $ bin/seek-bug --deep-seek-llm-path=/path/to/DeepSeek-R1-Distill-Llama-8B-Q8_0.gguf ./a.out
@@ -149,13 +171,6 @@ Process 13852 resuming
 Process 13852 exited with status = 1 (0x00000001)
 (seek-bug) q
 === Happy Debugging! Bye!
-```
-
-NOTE: In Linux enviroment, until I fix it, we needed to setup:
-
-```
-$ export LLDB_DEBUGSERVER_PATH=/usr/lib/llvm-19/bin/lldb-server-19.1.7
-$ export LD_LIBRARY_PATH=/path/to/llama.cpp/install/lib
 ```
 
 ## Build and run as LLDB Plugin
@@ -216,7 +231,14 @@ NOTE: This has a bug. The `SBTarget` and `SBThreads` are invalid when LLDB plugi
 
 ## Run tests
 
-Just run:
+NOTE: You may need:
+```
+$ sudo ln -s /usr/bin/FileCheck-19 /usr/bin/FileCheck`
+$ export LD_LIBRARY_PATH=/usr/local/lib/:$PATH
+```
+This will be fixed in CMake.
+
+Run tests:
 
 ```
 $ ninja check-seek-bug

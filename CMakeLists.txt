@@ -25,16 +25,11 @@ find_library(LLDB_LIBRARY REQUIRED
     PATHS "${LLVM_BUILD_ROOT}/lib" /usr/lib/llvm-19/lib/
 )
 
-message("-- Using LLDB library from ${LLDB_LIBRARY}")
-
-# Find llama.cpp.
-if (NOT LLAMA_CPP_DIR)
-  message(FATAL_ERROR "LLAMA_CPP_DIR must be specified in order to find llama.cpp")
-endif()
-
-message("-- Using lamma.cpp from ${LLAMA_CPP_DIR}")
-
-include_directories(${LLAMA_CPP_DIR}/include)
+find_library(LLAMA_CPP REQUIRED
+  NAMES libllama.so libllama.dylib llama
+  PATHS /usr/local/lib/
+  NO_DEFAULT_PATH
+)
 
 include_directories(${LLVM_INCLUDE_DIRS} ${LLVM_PROJECT_SOURCE}/lldb/include/)
 include_directories(${LLVM_PROJECT_SOURCE}/llvm/include)
@@ -54,10 +49,10 @@ add_executable(seek-bug main.cpp)
 # TODO: Fix this.
 # Link required libraries
 if(APPLE)
-  target_link_libraries(seek-bug ${llvm_libs} ${LLDB_LIBRARY} AICommands ${LLAMA_CPP_DIR}/lib/libllama.dylib)
+  target_link_libraries(seek-bug ${llvm_libs} ${LLDB_LIBRARY} AICommands ${LLAMA_CPP})
 else()
   # On Linux or other Unix-like systems
-  target_link_libraries(seek-bug ${llvm_libs} ${LLDB_LIBRARY} AICommands ${LLAMA_CPP_DIR}/lib/libllama.so)
+  target_link_libraries(seek-bug ${llvm_libs} ${LLDB_LIBRARY} AICommands ${LLAMA_CPP})
 endif()
 
 target_include_directories(seek-bug
