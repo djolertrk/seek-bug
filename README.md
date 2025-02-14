@@ -9,6 +9,54 @@ Let's have a chat with your debugger!
 `seek-bug` - an `LLDB` based debugger that uses `DeepSeek`.
 You can use it as a standalone tool, or as an LLDB plugin. The `DeepSeek` LLM is running on your machine.
 
+## Install the package on Ubuntu
+
+Install `seek-bug`:
+```
+$ wget https://github.com/djolertrk/seek-bug/releases/download/v0.0.1/seek-bug-0.0.1-Linux.deb
+$ sudo dpkg -i seek-bug-0.0.1-Linux.deb
+```
+
+Install LLVM/LLDB:
+
+```
+$ echo "deb http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs)-19 main" | sudo tee /etc/apt/sources.list.d/llvm.list
+$ wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+$ sudo apt-get update
+$ sudo apt-get install -y llvm-19-dev liblldb-19-dev
+```
+
+Install `llama.cpp`:
+
+```
+$ wget https://github.com/ggerganov/llama.cpp/releases/download/b4717/llama-b4717-bin-ubuntu-x64.zip
+$ unzip llama-b4717-bin-ubuntu-x64.zip
+```
+
+Run:
+
+```
+# This is to find llama.cpp lib (TODO: automate this)
+$ export LD_LIBRARY_PATH=$PWD/build/bin
+# Tell seek-bug where to find lldb-server (TODO: automate this)
+$ export LLDB_DEBUGSERVER_PATH=/usr/lib/llvm-19/bin/lldb-server-19.1.7
+$ seek-bug 
+=== SeekBug - Modern, Portable and Deep Debugger
+Usage: seek-bug --deep-seek-llm-path=<path> <program to debug>
+```
+
+## Deep seek
+
+Download: https://huggingface.co/lmstudio-community/DeepSeek-R1-Distill-Llama-8B-GGUF/tree/main, the `DeepSeek-R1-Distill-Llama-8B-Q8_0.gguf` model.
+
+```
+$ wget https://huggingface.co/lmstudio-community/DeepSeek-R1-Distill-Llama-8B-GGUF/resolve/main/DeepSeek-R1-Distill-Llama-8B-Q8_0.gguf
+```
+
+## Example
+
+![ai-random-suggest](https://github.com/user-attachments/assets/685e992a-b727-48bd-8bfb-da1a65449ed8)
+
 ## Build from source
 
 Here are steps to build the tool for MacOS and Linux.
@@ -51,14 +99,6 @@ $ git clone https://github.com/ggerganov/llama.cpp.git
 $ cd llama.cpp && mkdir build && cd build
 $ cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=OFF ..
 $ ninja && sudo ninja install
-```
-
-### Deep seek
-
-Download: https://huggingface.co/lmstudio-community/DeepSeek-R1-Distill-Llama-8B-GGUF/tree/main, the `DeepSeek-R1-Distill-Llama-8B-Q8_0.gguf` model.
-
-```
-$ wget https://huggingface.co/lmstudio-community/DeepSeek-R1-Distill-Llama-8B-GGUF/resolve/main/DeepSeek-R1-Distill-Llama-8B-Q8_0.gguf
 ```
 
 ### Build seek-bug
