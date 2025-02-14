@@ -6,6 +6,7 @@
 #include <llvm/Support/raw_ostream.h>
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <sstream>
@@ -21,12 +22,17 @@ static void llama_null_log_callback(enum ggml_log_level level, const char *text,
 }
 
 std::string runLLM(const std::string &prompt, const std::string &modelPath) {
-  // std::cout << "The prompt is: " << prompt << "\n";
+  if (const char* debugEnv = std::getenv("DEBUG_SEEKBUG")) {
+    if (std::string(debugEnv) == "1") {
+      llvm::WithColor(llvm::outs(), llvm::HighlightColor::String)
+          << "The prompt is: " << prompt << "\n";
+    }
+  }
 
   llvm::WithColor(llvm::outs(), llvm::HighlightColor::String)
       << "DeepSeek is thinking...\n";
 
-  // 1) Load the model
+  // Load the model
   llama_model_params model_params = llama_model_default_params();
 
   // Optionally disable logs:
@@ -38,7 +44,7 @@ std::string runLLM(const std::string &prompt, const std::string &modelPath) {
     return "[Error] Could not load model from " + modelPath;
   }
 
-  // 2) Create a context from the model
+  // Create a context from the model
   llama_context_params ctx_params = llama_context_default_params();
   llama_context *ctx = llama_init_from_model(model, ctx_params);
   if (!ctx) {
@@ -54,7 +60,7 @@ std::string runLLM(const std::string &prompt, const std::string &modelPath) {
     return "[Error] Could not retrieve vocab from model.";
   }
 
-  // 4) Tokenize the prompt.
+  // Tokenize the prompt.
   // This older API typically has the signature:
   //   llama_tokenize(vocab, text, text_len, tokens, n_tokens_max,
   //                  bool add_special, bool parse_special);
@@ -71,7 +77,7 @@ std::string runLLM(const std::string &prompt, const std::string &modelPath) {
   }
   prompt_tokens.resize(n_prompt);
 
-  // 5) Evaluate the prompt tokens (decode them) so the model sees the prompt
+  // Evaluate the prompt tokens (decode them) so the model sees the prompt
   // context
   //    This older fork calls 'llama_decode(...)' with a 'llama_batch'.
   llama_batch batch = llama_batch_get_one(prompt_tokens.data(), n_prompt);
@@ -81,14 +87,13 @@ std::string runLLM(const std::string &prompt, const std::string &modelPath) {
     return "[Error] Failed to decode prompt tokens.";
   }
 
-  // 6) Create a sampler chain (again, older API in some forks).
+  // Create a sampler chain (again, older API in some forks).
   auto sparams = llama_sampler_chain_default_params();
   llama_sampler *smpl = llama_sampler_chain_init(sparams);
 
   // For demonstration, a greedy sampler:
   llama_sampler_chain_add(smpl, llama_sampler_init_greedy());
 
-  // 7) Generate tokens in a loop
   std::ostringstream ss;
   const int max_new_tokens = 256;
   for (int i = 0; i < max_new_tokens; i++) {
@@ -121,7 +126,7 @@ std::string runLLM(const std::string &prompt, const std::string &modelPath) {
     }
   }
 
-  // 8) Cleanup
+  // Cleanup
   // llama_sampler_chain_free(smpl);
   llama_free(ctx);
   llama_free_model(model);

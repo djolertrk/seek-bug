@@ -143,7 +143,10 @@ std::string createRichPrompt(lldb::SBDebugger &debugger,
 
   lldb::SBTarget target = debugger.GetSelectedTarget();
   if (target.IsValid()) {
-    promptStream << "Target: " << target.GetExecutable().GetFilename() << "\n";
+    promptStream << "Program name is: " << target.GetExecutable().GetFilename()
+                 << "\n";
+    promptStream << "User created a breakpoint and execution stopped at this "
+                    "program point:\n";
 
     lldb::SBProcess process = target.GetProcess();
     if (process.IsValid()) {
@@ -196,12 +199,19 @@ std::string createRichPrompt(lldb::SBDebugger &debugger,
     }
   }
 
-  promptStream << "\n---\n"
-               << "User Question: " << userQuery << "\n"
-               << "Answer carefully and concisely. Focus on control flow. You "
-                  "can do it! And the answer should not be too large, use a "
-                  "few sentences. Do not print </think> and things after it. "
-                  "Use up to 5 sentences.\n";
+  promptStream
+      << "\n---\n"
+      << "User Question: " << userQuery << "\n"
+      << "Answer carefully and concisely. Focus on control flow. You "
+         "can do it! And the answer should not be too large, use a "
+         "few sentences. Do not print </think> and things after it. "
+         "Use up to 5 sentences.\n If the question is not related to "
+         "this program or program point, just say that you are here "
+         "to answer questions about this program, and that you cannot "
+         "think about something else. Do not print duplicated answers. Take a "
+         "breath, relax and do it!\n\n"
+         "Print answer only, DO NOT print thinking process. Print answer only! "
+         "Do not print </think> and all things before it!\n\n";
 
   return promptStream.str();
 }
@@ -241,23 +251,366 @@ bool AISuggestCommand::DoExecute(lldb::SBDebugger debugger, char **command,
   return true;
 }
 
+bool AICrashElaborateCommand::DoExecute(lldb::SBDebugger debugger,
+                                        char **command,
+                                        lldb::SBCommandReturnObject &result) {
+  int argCount = 0;
+  for (int i = 0; command[i] != nullptr; ++i) {
+    argCount++;
+  }
+  if (argCount != 1) {
+    result.Printf("Usage: ai crash-elaborate <path to corefile>\n");
+    result.SetStatus(lldb::eReturnStatusFailed);
+    return false;
+  }
+
+  std::string coreFilePath = command[0];
+  // Retrieve the current target.
+  lldb::SBTarget target = debugger.GetSelectedTarget();
+  if (!target.IsValid()) {
+    result.Printf("No valid target selected.\n");
+    result.SetStatus(lldb::eReturnStatusFailed);
+    return false;
+  }
+
+  // Load the core file.
+  lldb::SBProcess process = target.LoadCore(coreFilePath.c_str());
+  if (!process.IsValid()) {
+    result.Printf("Failed to load core file: %s\n", coreFilePath.c_str());
+    result.SetStatus(lldb::eReturnStatusFailed);
+    return false;
+  }
+
+  // Get the selected thread from the loaded process.
+  lldb::SBThread thread = process.GetSelectedThread();
+  if (!thread.IsValid()) {
+    result.Printf("No valid thread in the loaded core file.\n");
+    result.SetStatus(lldb::eReturnStatusFailed);
+    return false;
+  }
+
+  // TODO: This takes more tokens in prompt!
+  // Gather register information from the first frame.
+  // std::ostringstream registersStream;
+  // lldb::SBFrame frame = thread.GetFrameAtIndex(0);
+  // if (frame.IsValid()) {
+  //   lldb::SBValueList regGroups = frame.GetRegisters();
+  //   for (uint32_t i = 0; i < regGroups.GetSize(); i++) {
+  //     lldb::SBValue regSet = regGroups.GetValueAtIndex(i);
+  //     registersStream << "Register set: " << regSet.GetName() << "\n";
+  //     for (uint32_t j = 0; j < regSet.GetNumChildren(); j++) {
+  //       lldb::SBValue reg = regSet.GetChildAtIndex(j);
+  //       registersStream << "  " << reg.GetName() << " = "
+  //                       << (reg.GetValue() ? reg.GetValue() : "N/A") <<
+  //                       "\n";
+  //     }
+  //     break;
+  //   }
+  // } else {
+  //   registersStream << "No valid frame available to retrieve registers.\n";
+  // }
+
+  // Gather the call stack information and corresponding source snippets.
+  std::ostringstream callStackStream;
+  int numFrames = thread.GetNumFrames();
+  for (int i = 0; i < numFrames; i++) {
+    lldb::SBFrame currFrame = thread.GetFrameAtIndex(i);
+    if (currFrame.IsValid()) {
+      lldb::SBLineEntry lineEntry = currFrame.GetLineEntry();
+      lldb::SBFileSpec fileSpec = lineEntry.GetFileSpec();
+      uint32_t line = lineEntry.GetLine();
+
+      callStackStream << "#" << i << " " << currFrame.GetFunctionName()
+                      << " at " << fileSpec.GetFilename() << ":" << line
+                      << "\n";
+
+      // Retrieve a snippet of the source around the current line.
+      std::string snippet =
+          GetSourceSnippet(fileSpec, line, /* contextLines = */ 2);
+      if (!snippet.empty()) {
+        callStackStream << "Source snippet:\n" << snippet << "\n";
+      }
+    }
+  }
+
+  // Build the prompt for the LLM.
+  std::ostringstream promptStream;
+  promptStream << "You are a helpful AI assistant integrated with LLDB for "
+                  "crash analysis. You are expert for C/C++ as well.\n";
+  // promptStream << "Registers:\n" << registersStream.str() << "\n";
+  promptStream << "Program crashed with Call Stack:\n"
+               << callStackStream.str() << "\n";
+  promptStream << "---\n\n\n";
+  promptStream << "Analyze the crash in detail and provide potential causes "
+                  "and debugging suggestions.\n";
+
+  std::string prompt = promptStream.str();
+  std::string response = runLLM(prompt, context.DeepSeekLLMPath);
+
+  result.SetStatus(lldb::eReturnStatusSuccessFinishResult);
+  result.Printf("%s\n", response.c_str());
+  return true;
+}
+
+//----------------------------------------------------------------------------//
+// AIExplainCommand: Explains the current code snippet.
+//----------------------------------------------------------------------------//
+
+AIExplainCommand::AIExplainCommand(SeekBugContext &ctx) : context(ctx) {}
+
+bool AIExplainCommand::DoExecute(lldb::SBDebugger debugger, char **command,
+                                 lldb::SBCommandReturnObject &result) {
+  // Retrieve the current frame.
+  lldb::SBTarget target = debugger.GetSelectedTarget();
+  if (!target.IsValid()) {
+    result.Printf("No valid target selected.\n");
+    result.SetStatus(lldb::eReturnStatusFailed);
+    return false;
+  }
+  lldb::SBProcess process = target.GetProcess();
+  if (!process.IsValid()) {
+    result.Printf("No valid process.\n");
+    result.SetStatus(lldb::eReturnStatusFailed);
+    return false;
+  }
+  lldb::SBThread thread = process.GetSelectedThread();
+  if (!thread.IsValid()) {
+    result.Printf("No valid thread.\n");
+    result.SetStatus(lldb::eReturnStatusFailed);
+    return false;
+  }
+  lldb::SBFrame frame = thread.GetSelectedFrame();
+  if (!frame.IsValid()) {
+    result.Printf("No valid frame.\n");
+    result.SetStatus(lldb::eReturnStatusFailed);
+    return false;
+  }
+  lldb::SBLineEntry lineEntry = frame.GetLineEntry();
+  lldb::SBFileSpec fileSpec = lineEntry.GetFileSpec();
+  uint32_t line = lineEntry.GetLine();
+
+  // Get a source snippet with 5 lines of context.
+  std::string snippet =
+      GetSourceSnippet(fileSpec, line, /* contextLines = */ 5);
+
+  // Build prompt for explanation.
+  std::ostringstream promptStream;
+  promptStream << "You are an expert C/C++ code analyst. Please explain what "
+                  "the following code does, "
+               << "and highlight any potential issues:\n";
+  promptStream << "File: " << fileSpec.GetFilename() << " at line " << line
+               << "\n";
+  promptStream << snippet << "\n";
+
+  promptStream
+      << "\n---\nAnswer carefully and concisely. You can do it! And the answer "
+         "should not be too large, use a few sentences. Do not print </think> "
+         "and things after it. Use up to 5 sentences.\n";
+
+  std::string prompt = promptStream.str();
+
+  // Run the LLM on the prompt.
+  std::string response = runLLM(prompt, context.DeepSeekLLMPath);
+
+  result.SetStatus(lldb::eReturnStatusSuccessFinishResult);
+  result.Printf("%s\n", response.c_str());
+  return true;
+}
+
+//----------------------------------------------------------------------------//
+// AIStackSummaryCommand: Provides a summary of the current call stack.
+//----------------------------------------------------------------------------//
+
+AIStackSummaryCommand::AIStackSummaryCommand(SeekBugContext &ctx)
+    : context(ctx) {}
+
+bool AIStackSummaryCommand::DoExecute(lldb::SBDebugger debugger, char **command,
+                                      lldb::SBCommandReturnObject &result) {
+  // Retrieve the current target, process, and thread.
+  lldb::SBTarget target = debugger.GetSelectedTarget();
+  if (!target.IsValid()) {
+    result.Printf("No valid target selected.\n");
+    result.SetStatus(lldb::eReturnStatusFailed);
+    return false;
+  }
+  lldb::SBProcess process = target.GetProcess();
+  if (!process.IsValid()) {
+    result.Printf("No valid process.\n");
+    result.SetStatus(lldb::eReturnStatusFailed);
+    return false;
+  }
+  lldb::SBThread thread = process.GetSelectedThread();
+  if (!thread.IsValid()) {
+    result.Printf("No valid thread.\n");
+    result.SetStatus(lldb::eReturnStatusFailed);
+    return false;
+  }
+
+  // Build a call stack string with source snippets.
+  std::ostringstream callStackStream;
+  int numFrames = thread.GetNumFrames();
+  for (int i = 0; i < numFrames; i++) {
+    lldb::SBFrame currFrame = thread.GetFrameAtIndex(i);
+    if (currFrame.IsValid()) {
+      lldb::SBLineEntry lineEntry = currFrame.GetLineEntry();
+      lldb::SBFileSpec fileSpec = lineEntry.GetFileSpec();
+      uint32_t line = lineEntry.GetLine();
+      callStackStream << "#" << i << " " << currFrame.GetFunctionName()
+                      << " at " << fileSpec.GetFilename() << ":" << line
+                      << "\n";
+
+      // Retrieve a snippet with 2 lines of context.
+      std::string snippet = GetSourceSnippet(fileSpec, line, 2);
+      if (!snippet.empty()) {
+        callStackStream << "Snippet:\n" << snippet << "\n";
+      }
+    }
+  }
+
+  // Build prompt for stack summary.
+  std::ostringstream promptStream;
+  promptStream << "You are an expert debugger assistant. You are C/C++ expert "
+                  "as well. Provide a summary of the following call stack, "
+               << "including potential causes for errors and suggestions for "
+                  "further investigation:\n\n";
+  promptStream << callStackStream.str() << "\n";
+  promptStream
+      << "\n---\nAnswer carefully and concisely. You can do it! And the answer "
+         "should not be too large, use a few sentences. Do not print </think> "
+         "and things after it. Use up to 5 sentences.\n";
+
+  std::string prompt = promptStream.str();
+
+  // Run the LLM on the prompt.
+  std::string response = runLLM(prompt, context.DeepSeekLLMPath);
+
+  result.SetStatus(lldb::eReturnStatusSuccessFinishResult);
+  result.Printf("%s\n", response.c_str());
+  return true;
+}
+
+//----------------------------------------------------------------------------//
+// AIFixCommand: Suggests a fix for the current code snippet.
+//----------------------------------------------------------------------------//
+
+AIFixCommand::AIFixCommand(SeekBugContext &ctx) : context(ctx) {}
+
+bool AIFixCommand::DoExecute(lldb::SBDebugger debugger, char **command,
+                             lldb::SBCommandReturnObject &result) {
+  // Retrieve the current frame.
+  lldb::SBTarget target = debugger.GetSelectedTarget();
+  if (!target.IsValid()) {
+    result.Printf("No valid target selected.\n");
+    result.SetStatus(lldb::eReturnStatusFailed);
+    return false;
+  }
+  lldb::SBProcess process = target.GetProcess();
+  if (!process.IsValid()) {
+    result.Printf("No valid process.\n");
+    result.SetStatus(lldb::eReturnStatusFailed);
+    return false;
+  }
+  lldb::SBThread thread = process.GetSelectedThread();
+  if (!thread.IsValid()) {
+    result.Printf("No valid thread.\n");
+    result.SetStatus(lldb::eReturnStatusFailed);
+    return false;
+  }
+  lldb::SBFrame frame = thread.GetSelectedFrame();
+  if (!frame.IsValid()) {
+    result.Printf("No valid frame.\n");
+    result.SetStatus(lldb::eReturnStatusFailed);
+    return false;
+  }
+  lldb::SBLineEntry lineEntry = frame.GetLineEntry();
+  lldb::SBFileSpec fileSpec = lineEntry.GetFileSpec();
+  uint32_t line = lineEntry.GetLine();
+
+  // Retrieve a snippet with 5 lines of context.
+  std::string snippet = GetSourceSnippet(fileSpec, line, 5);
+
+  // Build prompt asking for a suggested fix.
+  std::ostringstream promptStream;
+  promptStream << "You are an expert C/C++ engineer. The following code "
+                  "snippet may contain a bug. "
+               << "Please suggest a fix along with an explanation:\n";
+  promptStream << "File: " << fileSpec.GetFilename() << " at line " << line
+               << "\n";
+  promptStream << snippet << "\n";
+  promptStream
+      << "\n---\nAnswer carefully and concisely. You can do it! And the answer "
+         "should not be too large, use a few sentences. Do not print </think> "
+         "and things after it. Use up to 5 sentences.\n";
+
+  std::string prompt = promptStream.str();
+
+  // Run the LLM on the prompt.
+  std::string response = runLLM(prompt, context.DeepSeekLLMPath);
+
+  result.SetStatus(lldb::eReturnStatusSuccessFinishResult);
+  result.Printf("%s\n", response.c_str());
+  return true;
+}
+
 bool RegisterAICommands(lldb::SBCommandInterpreter &interpreter,
                         SeekBugContext &context) {
   // Add the main 'ai' multiword command, which groups sub-commands.
   lldb::SBCommand aiCmd =
       interpreter.AddMultiwordCommand("ai", "AI-based commands");
   if (!aiCmd.IsValid()) {
-    // Something went wrong registering the multiword command
     return false;
   }
 
-  // Add the sub-command "suggest" to the "ai" group.
+  // Add the "suggest" sub-command.
   static AISuggestCommand *suggestCmdImpl = new AISuggestCommand(context);
-  lldb::SBCommand suggestCmd = aiCmd.AddCommand(
-      "suggest", suggestCmdImpl,
-      "Ask the AI for suggestions. Usage: ai suggest <question>");
+  lldb::SBCommand suggestCmd =
+      aiCmd.AddCommand("suggest", suggestCmdImpl,
+                       "Ask the AI for suggestions about your program. Usage: "
+                       "ai suggest <question>");
+  if (!suggestCmd.IsValid()) {
+    return false;
+  }
 
-  return suggestCmd.IsValid();
+  // Add the "crash-elaborate" sub-command.
+  static AICrashElaborateCommand *crashElaborateCmd =
+      new AICrashElaborateCommand(context);
+  lldb::SBCommand crashElabCmd =
+      aiCmd.AddCommand("crash-elaborate", crashElaborateCmd,
+                       "Analyze a crash by loading a core file. Usage: ai "
+                       "crash-elaborate <path to corefile>");
+  if (!crashElabCmd.IsValid()) {
+    return false;
+  }
+
+  // Add the "explain" sub-command.
+  static AIExplainCommand *explainCmd = new AIExplainCommand(context);
+  lldb::SBCommand explainSB =
+      aiCmd.AddCommand("explain", explainCmd,
+                       "Explain the current code snippet. Usage: ai explain");
+  if (!explainSB.IsValid()) {
+    return false;
+  }
+
+  // Add the "stack-summary" sub-command.
+  static AIStackSummaryCommand *stackSummaryCmd =
+      new AIStackSummaryCommand(context);
+  lldb::SBCommand stackSummarySB = aiCmd.AddCommand(
+      "stack-summary", stackSummaryCmd,
+      "Summarize the current call stack. Usage: ai stack-summary");
+  if (!stackSummarySB.IsValid()) {
+    return false;
+  }
+
+  // Add the "fix" sub-command.
+  static AIFixCommand *fixCmd = new AIFixCommand(context);
+  lldb::SBCommand fixSB = aiCmd.AddCommand(
+      "fix", fixCmd,
+      "Suggest a fix for the current code snippet. Usage: ai fix");
+  if (!fixSB.IsValid()) {
+    return false;
+  }
+
+  return true;
 }
 
 } // end namespace seekbug

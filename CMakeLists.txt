@@ -66,3 +66,15 @@ set_target_properties(seek-bug
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
+
+install(TARGETS seek-bug
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib)
+
+set(CPACK_GENERATOR "DEB")
+set(CPACK_PACKAGE_NAME "seek-bug")
+set(CPACK_PACKAGE_VERSION "0.0.1")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Djordje Todorovic <djolertrk@gmail.com>")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "liblldb-19-dev, libllama")
+include(CPack)

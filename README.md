@@ -64,7 +64,7 @@ $ wget https://huggingface.co/lmstudio-community/DeepSeek-R1-Distill-Llama-8B-GG
 ### Build seek-bug
 
 NOTE: On Linux, you can avoid `-DLLVM_BUILD_ROOT`, since we are using it from installed packages.
-NOTE: Make sure you copy `llama.cpp` library into `/lib`.
+NOTE: Make sure you copy `llama.cpp` library into `/lib`. Or, you can create symlink, but anyway it is a workaround for now.
 ```
 $ sudo cp /usr/local/lib/libllama.so /lib
 ```
@@ -242,4 +242,10 @@ Run tests:
 
 ```
 $ ninja check-seek-bug
+```
+
+## Create `.deb` package
+
+```
+$ cpack
 ```
