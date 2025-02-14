@@ -293,8 +293,9 @@ $ cpack
 ## TODO
 
 1. Fix `seek-bug-as-lldb-plugin` case
-2. Improve prompts
-3. Add more commands
+2. Add VSCode plugin
+3. Improve prompts
+4. Add more commands
 
 ## Contact
 
