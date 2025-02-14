@@ -289,3 +289,13 @@ $ ninja check-seek-bug
 ```
 $ cpack
 ```
+
+## TODO
+
+1. Fix `seek-bug-as-lldb-plugin` case
+2. Improve prompts
+3. Add more commands
+
+## Contact
+
+New ideas? Drop me a message at djolertrk@gmail.com
