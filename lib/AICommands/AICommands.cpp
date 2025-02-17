@@ -134,6 +134,41 @@ static std::string GetSourceSnippet(const lldb::SBFileSpec &fileSpec,
   return snippet.str();
 }
 
+static std::string GetSourceSnippetRange(const lldb::SBFileSpec &fileSpec,
+                                         uint32_t startLine, uint32_t endLine) {
+  std::string path;
+  if (fileSpec.GetDirectory() && *fileSpec.GetDirectory()) {
+    path = fileSpec.GetDirectory();
+    if (!path.empty() && path.back() != '/' && path.back() != '\\') {
+      path.push_back('/');
+    }
+  }
+  if (fileSpec.GetFilename() && *fileSpec.GetFilename()) {
+    path += fileSpec.GetFilename();
+  }
+  std::ifstream infile(path);
+  if (!infile.is_open()) {
+    return ""; // Couldn’t read the file
+  }
+
+  std::ostringstream snippet;
+  std::string lineText;
+  int currentLine = 1;
+  while (std::getline(infile, lineText)) {
+    if (currentLine >= (int)startLine && currentLine <= (int)endLine) {
+      // Optionally mark the first line
+      if (currentLine == (int)startLine)
+        snippet << "-> " << currentLine << ": " << lineText << "\n";
+      else
+        snippet << "   " << currentLine << ": " << lineText << "\n";
+    }
+    if (currentLine > (int)endLine)
+      break;
+    currentLine++;
+  }
+  return snippet.str();
+}
+
 std::string createRichPrompt(lldb::SBDebugger &debugger,
                              const std::string &userQuery) {
   std::ostringstream promptStream;
@@ -353,14 +388,14 @@ bool AICrashElaborateCommand::DoExecute(lldb::SBDebugger debugger,
 }
 
 //----------------------------------------------------------------------------//
-// AIExplainCommand: Explains the current code snippet.
+// AIExplainCommand: Explains the code snippet between 2 lines.
 //----------------------------------------------------------------------------//
 
 AIExplainCommand::AIExplainCommand(SeekBugContext &ctx) : context(ctx) {}
 
 bool AIExplainCommand::DoExecute(lldb::SBDebugger debugger, char **command,
                                  lldb::SBCommandReturnObject &result) {
-  // Retrieve the current frame.
+  // Retrieve the current frame and ensure it's valid
   lldb::SBTarget target = debugger.GetSelectedTarget();
   if (!target.IsValid()) {
     result.Printf("No valid target selected.\n");
@@ -387,29 +422,47 @@ bool AIExplainCommand::DoExecute(lldb::SBDebugger debugger, char **command,
   }
   lldb::SBLineEntry lineEntry = frame.GetLineEntry();
   lldb::SBFileSpec fileSpec = lineEntry.GetFileSpec();
-  uint32_t line = lineEntry.GetLine();
 
-  // Get a source snippet with 5 lines of context.
-  std::string snippet =
-      GetSourceSnippet(fileSpec, line, /* contextLines = */ 5);
+  // Expect exactly two arguments: start line and end line
+  int argCount = 0;
+  while (command[argCount] != nullptr) {
+    argCount++;
+  }
+  if (argCount != 2) {
+    result.Printf("Usage: ai explain <start line> <end line>\n");
+    result.SetStatus(lldb::eReturnStatusFailed);
+    return false;
+  }
+  uint32_t startLine = std::atoi(command[0]);
+  uint32_t endLine = std::atoi(command[1]);
+  if (startLine == 0 || endLine == 0 || endLine < startLine) {
+    result.Printf("Invalid line range provided.\n");
+    result.SetStatus(lldb::eReturnStatusFailed);
+    return false;
+  }
 
-  // Build prompt for explanation.
+  // Get snippet from the specified range.
+  std::string snippet = GetSourceSnippetRange(fileSpec, startLine, endLine);
+  if (snippet.empty()) {
+    result.Printf("Failed to retrieve code snippet for the given range.\n");
+    result.SetStatus(lldb::eReturnStatusFailed);
+    return false;
+  }
+
+  // Build the prompt for the LLM.
   std::ostringstream promptStream;
   promptStream << "You are an expert C/C++ code analyst. Please explain what "
                   "the following code does, "
                << "and highlight any potential issues:\n";
-  promptStream << "File: " << fileSpec.GetFilename() << " at line " << line
-               << "\n";
+  promptStream << "File: " << fileSpec.GetFilename() << " from line "
+               << startLine << " to " << endLine << "\n";
   promptStream << snippet << "\n";
-
   promptStream
       << "\n---\nAnswer carefully and concisely. You can do it! And the answer "
          "should not be too large, use a few sentences. Do not print </think> "
-         "and things after it. Use up to 5 sentences.\n";
+         "and things after it. Use up to 5 sentences. You can do it!\n";
 
   std::string prompt = promptStream.str();
-
-  // Run the LLM on the prompt.
   std::string response = runLLM(prompt, context.DeepSeekLLMPath);
 
   result.SetStatus(lldb::eReturnStatusSuccessFinishResult);
