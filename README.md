@@ -53,9 +53,11 @@ Download: https://huggingface.co/lmstudio-community/DeepSeek-R1-Distill-Llama-8B
 $ wget https://huggingface.co/lmstudio-community/DeepSeek-R1-Distill-Llama-8B-GGUF/resolve/main/DeepSeek-R1-Distill-Llama-8B-Q8_0.gguf
 ```
 
-## Example
+## Examples
 
 ![ai-random-suggest](https://github.com/user-attachments/assets/685e992a-b727-48bd-8bfb-da1a65449ed8)
+
+![Screenshot from 2025-02-17 19-46-01](https://github.com/user-attachments/assets/23d95033-9d79-4487-9091-0c2332d5e474)
 
 ## Build from source
 
