@@ -637,9 +637,9 @@ bool RegisterAICommands(lldb::SBCommandInterpreter &interpreter,
 
   // Add the "explain" sub-command.
   static AIExplainCommand *explainCmd = new AIExplainCommand(context);
-  lldb::SBCommand explainSB =
-      aiCmd.AddCommand("explain", explainCmd,
-                       "Explain the current code snippet. Usage: ai explain");
+  lldb::SBCommand explainSB = aiCmd.AddCommand(
+      "explain", explainCmd,
+      "Explain code snippet. Usage: ai explain FROM_LINE TO_LINE");
   if (!explainSB.IsValid()) {
     return false;
   }
