@@ -20,6 +20,7 @@ configure_lit_site_cfg(
         ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py
 )
 
+include(TableGen)
 include(AddLLVM)
 
 # Find llvm-lit

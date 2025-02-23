@@ -126,7 +126,7 @@ $ cmake ../seek-bug/ -DLLVM_DIR=/path/to/llvm/lib/cmake/llvm -DLLVM_EXTERNAL_LIT
 Configure on Linux:
 
 ```
-$ cmake ../seek-bug/ -DCMAKE_CXX_FLAGS="-Wno-deprecated-declarations" -DLLVM_DIR=/usr/lib/llvm-19/lib/cmake/llvm -DLLVM_EXTERNAL_LIT=/path/to/lit -DCMAKE_CXX_FLAGS="-fPIC" -G Ninja
+$ cmake ../seek-bug/ -DCMAKE_CXX_FLAGS="-Wno-deprecated-declarations" -DLLVM_DIR=/usr/lib/llvm-19/lib/cmake/llvm -DLLVM_EXTERNAL_LIT=/path/to/lit -DCMAKE_CXX_FLAGS="-fPIC" -DLLVM_TABLEGEN_EXE=/usr/bin/llvm-tblgen-19 -G Ninja
 ```
 
 Build:

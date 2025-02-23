@@ -37,12 +37,14 @@ include_directories(/usr/lib/llvm-19/include/)
 
 llvm_map_components_to_libnames(llvm_libs
   Support
+  Option
 )
 
 set(SEEKBUG_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_subdirectory(lib)
 add_subdirectory(test)
+add_subdirectory(tools)
 
 add_executable(seek-bug main.cpp)
 
